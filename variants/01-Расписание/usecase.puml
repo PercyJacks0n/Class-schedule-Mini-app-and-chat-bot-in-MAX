@@ -1,0 +1,31 @@
+﻿@startuml
+left to right direction
+actor "Сотрудник Учебного управления" as Manager
+actor "Студент / Преподаватель" as User
+actor "Администратор системы" as Admin
+actor "ИТ-система 1С" as System1C
+
+rectangle "Микросервис расписания и экосистема MAX" {
+  usecase "Автоматический импорт и оптимизация из 1С" as UC1
+  usecase "Вести журнал аудита" as UC2
+  usecase "Контролировать коллизии (BR-2)" as UC3
+  usecase "Формировать аналитические отчёты" as UC4
+  usecase "Отображать сетку в Mini App" as UC5
+  usecase "Отправлять push-уведомления" as UC6
+  usecase "Резервный экспорт в Excel" as UC7
+  usecase "Просматривать расписание в чат-боте" as UC8
+}
+
+System1C --> UC1
+Manager --> UC1 
+Manager --> UC2
+Manager --> UC3
+Manager --> UC4
+Manager --> UC7
+User --> UC5
+User --> UC8
+UC1 ..> UC3 : include
+UC1 ..> UC2 : include
+UC1 ..> UC6 : trigger
+Admin --> UC2
+@enduml
