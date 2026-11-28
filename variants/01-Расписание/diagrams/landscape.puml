@@ -1,0 +1,38 @@
+@startuml landscape
+title Контур систем. Сервис «Расписание занятий в MAX»
+
+actor "Диспетчер Учебного управления" as Dispatcher
+actor "Преподаватель / Студент" as User
+
+node "Серверная инфраструктура университета" {
+  component "Веб-интерфейс диспетчера" as UI
+  component "Сервер «Расписание занятий» (API)" as App
+  database "База данных (PostgreSQL)\nРасписание, аудит, подписки" as DB
+}
+
+node "ИС «1С:Университет ПРОФ»" {
+  component "HTTP-сервисы 1С (/hs/...)" as OneC
+  database "Учебные планы, кафедры,\nнагрузка, аудитории" as OneC_DB
+}
+
+node "Мессенджер MAX" {
+  component "Bot API мессенджера MAX" as MaxBot
+}
+
+Dispatcher --> UI : HTTPS (браузер)
+UI --> App : REST API (HTTPS/JSON)\nJWT токен
+
+App --> DB : SQL (чтение и запись данных)
+App --> OneC : КНТ-1: чтение расписания\nREST GET, Basic Auth
+OneC --> OneC_DB : выборка данных
+
+App --> MaxBot : КНТ-2: отправка уведомлений\nREST POST, Bearer Token
+User <--> MaxBot : просмотр расписания\nи получение уведомлений
+
+note bottom of App
+  Серверная часть работает без сохранения сессий
+  в памяти процесса (stateless). При росте нагрузки
+  поддерживается запуск нескольких копий за Nginx.
+end note
+
+@enduml

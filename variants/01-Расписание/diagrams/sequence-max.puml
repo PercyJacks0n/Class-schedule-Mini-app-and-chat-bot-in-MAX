@@ -1,0 +1,32 @@
+@startuml sequence-max
+title КНТ-2. Отправка уведомления об изменении расписания в MAX. REST POST
+
+actor "Диспетчер" as Dispatcher
+participant "Сервер расписания" as App
+participant "База данных" as DB
+participant "Bot API мессенджера MAX" as MaxBot
+actor "Студент / Преподаватель" as User
+
+Dispatcher -> App : Публикация изменений по паре
+App -> DB : Выборка списка активных подписок на группу / преподавателя
+DB --> App : Список chat_id получателей
+
+loop Для каждого подписчика из списка
+  App -> MaxBot : POST /bot/v1/messages/send\nAuthorization: Bearer <bot_token>\nJSON: {recipient_id, text, notification_type}
+
+  alt Сообщение успешно доставлено (HTTP 200)
+    MaxBot --> App : HTTP 200 OK {message_id, status: "sent"}
+    MaxBot -> User : Мгновенное push-уведомление в чат
+  else Пользователь заблокировал бота (HTTP 403)
+    MaxBot --> App : HTTP 403 Forbidden {error: "bot_blocked"}
+    App -> DB : Деактивация подписки для данного chat_id
+  else Сбой сервиса MAX или таймаут
+    MaxBot --> App : HTTP 503 Service Unavailable / таймаут
+    App -> DB : Пометка сообщения для повторной отправки (до 3 попыток)
+  end
+end
+
+App -> DB : Запись факта публикации и статистики рассылки в журнал
+App --> Dispatcher : Публикация завершена, уведомления отправлены
+
+@enduml
