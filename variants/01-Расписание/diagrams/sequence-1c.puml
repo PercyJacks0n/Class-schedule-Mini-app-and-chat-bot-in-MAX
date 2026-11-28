@@ -1,0 +1,29 @@
+@startuml sequence-1c
+title КНТ-1. Загрузка данных расписания из 1С. REST GET
+
+actor "Диспетчер" as Dispatcher
+participant "Сервер расписания" as App
+participant "База данных" as DB
+participant "1С:Университет ПРОФ" as OneC
+
+Dispatcher -> App : Запуск импорта расписания
+App -> OneC : GET /university_volgmu/hs/volgmed_data/Department_University\nAuthorization: Basic SiteAPI:***\nAccept: application/json
+
+alt Успешная загрузка данных (HTTP 200)
+  OneC --> App : HTTP 200 OK (JSON с деревом подразделений и аудиторий)
+  App -> App : Очистка текстового префикса перед JSON
+  App -> App : Проверка структуры и удаление дубликатов занятий
+  App -> DB : Сохранение расписания и запись в журнал аудита
+  DB --> App : Подтверждение записи
+  App --> Dispatcher : Расписание успешно обновлено
+else Ошибка авторизации (HTTP 401/403)
+  OneC --> App : HTTP 401 Unauthorized / 403 Forbidden
+  App -> DB : Запись ошибки интеграции в журнал аудита
+  App --> Dispatcher : Ошибка: неверные учетные данные шлюза 1С
+else Сервер 1С недоступен или таймаут
+  OneC --> App : Таймаут соединения (> 1800 с) или сетевой сбой
+  App -> DB : Запись ошибки недоступности в журнал аудита
+  App --> Dispatcher : 1С временно недоступна, данные сохранены из локальной копии
+end
+
+@enduml
